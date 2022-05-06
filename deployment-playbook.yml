@@ -1,0 +1,17 @@
+---
+- hosts: all
+
+  tasks:
+    - name: stop container
+      command: docker stop back-end-container
+      ignore_errors: yes
+
+    - name: remove container
+      command: docker rm back-end-container
+      ignore_errors: yes
+
+    - name: Pull image from dockerhub
+      command: docker pull akila1811/node-image:latest
+
+    - name: Building docker container from image
+      command: docker run -d -it --name back-end-container akila1811/node-image:latest
