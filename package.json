@@ -27,6 +27,7 @@
     "web-push": "^3.4.5"
   },
   "devDependencies": {
+    "jest": "^28.1.0",
     "nodemon": "^2.0.16",
     "webpack-cli": "^4.9.2"
   }
