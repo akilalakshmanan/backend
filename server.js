@@ -110,7 +110,7 @@ app.post('/create-checkout-session', async (req, res) => {
   res.redirect(303, session.url);
 });
 
-const endpointSecret = "whsec_8f6e156de7f2318095d13e20e34245ff68f636ca1ca1fc7d14dafd1a1c36aa45";
+//const endpointSecret = "whsec_8f6e156de7f2318095d13e20e34245ff68f636ca1ca1fc7d14dafd1a1c36aa45";
 // Match the raw body to content type application/json
 // If you are using Express v4 - v4.16 you need to use body-parser, not express, to retrieve the request body
 app.post('/webhook', express.json({type: 'application/json'}), (request, response) => {
