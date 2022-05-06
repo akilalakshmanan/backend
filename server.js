@@ -12,7 +12,14 @@ import Stripe from 'stripe';
 dotenv.config();
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use((req, res, next) => {
+  console.log(req.originalUrl);
+  if (req.originalUrl === '/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true }));
 const frontEndDomain = 'http://localhost:3000';
 
@@ -94,20 +101,6 @@ app.post('/create-checkout-session', async (req, res) => {
     payment_method_types: [
       'card'
     ],
-    // line_items: [
-    //   {
-    //     price: 'price_1KvFAZSCNerHjE1mKQt6EHtK',
-    //     quantity: 12,
-    //   },
-    //   {
-    //     price: 'price_1KvBfESCNerHjE1mJMX2Wfrs',
-    //     quantity: 2
-    //   },
-    //   {
-    //     price: 'price_1KsitsSCNerHjE1merNhyrwr',
-    //     quantity: 1
-    //   },
-    // ]
     line_items: itemsList,
     mode: 'payment',
     success_url: `${frontEndDomain}?success=true`,
@@ -115,6 +108,47 @@ app.post('/create-checkout-session', async (req, res) => {
   });
 
   res.redirect(303, session.url);
+});
+
+const endpointSecret = "whsec_8f6e156de7f2318095d13e20e34245ff68f636ca1ca1fc7d14dafd1a1c36aa45";
+// Match the raw body to content type application/json
+// If you are using Express v4 - v4.16 you need to use body-parser, not express, to retrieve the request body
+app.post('/webhook', express.json({type: 'application/json'}), (request, response) => {
+  const sig = request.headers['stripe-signature'];
+
+  let event;
+  console.log("came to webhooks");
+  try {
+    event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
+  } catch (err) {
+    response.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }finally{
+    console.log("finally part")
+  }
+  console.log("came after consctructEvent");
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const paymentIntent = event.data.object;
+      console.log('checkout.session.completed',paymentIntent);
+      // Then define and call a method to handle the successful payment intent.
+      // handlePaymentIntentSucceeded(paymentIntent);
+      break;
+    case 'charge.succeeded':
+      const paymentMethod = event.data.object;
+      console.log('charge.succeeded',paymentMethod);
+      // Then define and call a method to handle the successful attachment of a PaymentMethod.
+      // handlePaymentMethodAttached(paymentMethod);
+      break;
+    // ... handle other event types
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  // Return a response to acknowledge receipt of the event
+  response.json({received: true});
 });
 
 app.use('/api/products', productRouter);
