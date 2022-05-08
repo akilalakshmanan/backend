@@ -53,4 +53,5 @@ const data = {
   ],
 };
 
+// module.export = [data];
 export default data;
