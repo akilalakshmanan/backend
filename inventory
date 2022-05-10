@@ -1,2 +1,2 @@
 [ubuntu]
-192.168.0.112 ansible_pass=1811 ansible_user=gokul
+192.168.0.106 ansible_pass=1811 ansible_user=akila

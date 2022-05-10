@@ -7,7 +7,6 @@ import productRouter from './routes/productRoutes.js';
 import orderRouter from './routes/orderRoutes.js';
 import fs from 'fs';
 import Stripe from 'stripe';
-import logger from './logger.cjs';
 
 dotenv.config();
 const app = express();
@@ -156,12 +155,5 @@ app.post(
 app.use('/api/products', productRouter);
 app.use('/api/users', userRouter);
 app.use('/api/orders', orderRouter);
-// app.use('/api/seed', seedRouter);
-
-// const port = process.env.port || 5000;
-// app.listen(port, () => {
-//   logger.info(`Server is running on the port ${port}`);
-//   console.log(`Server is running on the port ${port}`);
-// });
 
 export default app;
