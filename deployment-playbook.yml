@@ -14,4 +14,4 @@
       command: docker pull akila1811/node-image:latest
 
     - name: Building docker container from image
-      command: docker run -d -it --name back-end-container akila1811/node-image:latest
+      command: docker run -it --name back-end-container akila1811/node-image:latest
