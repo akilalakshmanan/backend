@@ -4,8 +4,13 @@ import Order from '../models/orderModel.js';
 import User from '../models/userModel.js';
 import Product from '../models/productModel.js';
 import { isAuth, isAdmin } from '../utils.js';
+import dotenv from 'dotenv';
+import Stripe from 'stripe';
 
+dotenv.config();
 const orderRouter = express.Router();
+const stripe = new Stripe(process.env.STRIPE_PUBLIC_KEY);
+const frontEndDomain = 'http://localhost:3000';
 
 orderRouter.get(
   '/',
@@ -14,6 +19,80 @@ orderRouter.get(
   expressAsyncHandler(async (req, res) => {
     const orders = await Order.find().populate('user', 'name');
     res.send(orders);
+  })
+);
+
+orderRouter.post('/updateOrder',
+  isAuth,
+  expressAsyncHandler(async (req, res) => {
+    const orderStatus = JSON.parse(req.body.clientOrderId);
+    const clientOrderId = orderStatus.clientOrderId;
+    const order = await Order.find({ clientOrderId: clientOrderId });
+    console.log('orderorderorderorder',order);
+    res.send({message : "order updated"});
+  })
+)
+
+orderRouter.post(
+  '/create-checkout-session', 
+  isAuth,
+  expressAsyncHandler(async (req, res) => {
+    const itemsList = []
+    console.log(req.body.priceIdAQuantity);
+    console.log(JSON.parse(req.body.priceIdAQuantity));
+    const sessionData = JSON.parse(req.body.priceIdAQuantity)
+    const userId = sessionData.userId;
+    const clientOrderId = sessionData.clientOrderId;
+    const cartList = sessionData.cartItems;
+    const orderdItems = []
+    let itemsPrice = 0;
+    let taxPrice = 0;
+    cartList.forEach((item) =>{
+      orderdItems.push({
+        slug: item.slug,
+        name: item.name,
+        quantity: item.quantity,
+        image: item.image,
+        price: item.price,
+        product: item._id
+      })
+      itemsPrice += item.price;
+      taxPrice += item.price * 0.05;
+      itemsList.push({
+        price: item.priceIdStripe,
+        quantity: item.quantity
+      })
+    })
+    const order = new Order({
+      clientOrderId: clientOrderId,
+      orderItems: orderdItems,
+      paymentMethod: 'card',
+      paymentResult: {
+        status: "",
+        statusChanges: false,
+        update_time: "",
+      },
+      itemsPrice: itemsPrice,
+      taxPrice: taxPrice,
+      totalPrice: itemsPrice + taxPrice,
+      user: userId,
+      isPaid: false,
+      paidAt: new Date().toISOString(),
+    })
+    const newOrder = await order.save();
+    console.log('itemsListitemsListitemsListitemsList',itemsList);
+    // Provide the exact Price ID (for example, pr_1234) of the product you want to sell
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: [
+        'card'
+      ],
+      line_items: itemsList,
+      mode: 'payment',
+      success_url: `${frontEndDomain}?success=true`,
+      cancel_url: `${frontEndDomain}?canceled=true`,
+    });
+
+    res.redirect(303, session.url);
   })
 );
 
