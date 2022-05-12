@@ -17,7 +17,11 @@ export const generateToken = (user) => {
 };
 
 export const isAuth = (req, res, next) => {
-  const authorization = req.headers.authorization;
+  console.log('req.headers.authorization',req.headers.authorization);
+  let authorization = req.headers.authorization;
+  if(!req.headers.authorization && req.body.authToken){
+    authorization = req.body.authToken
+  }
   if (authorization) {
     const token = authorization.slice(7, authorization.length); // Bearer XXXXXX
     jwt.verify(token, process.env.JWT_SECRET, (err, decode) => {
@@ -25,6 +29,7 @@ export const isAuth = (req, res, next) => {
         res.status(401).send({ message: 'Invalid Token' });
       } else {
         req.user = decode;
+        console.log('req.userreq.userreq.user',req.user);
         next();
       }
     });

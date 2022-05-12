@@ -20,8 +20,6 @@ app.post('/sample', async(req,res) => {
     res.send({ id: 0 })
 })
 
-const frontEndDomain = 'http://localhost:3000';
-
 const username = "akila_l";
 const password = "ZUUQsnjqABxzkWFv";
 const cluster = "caffconfclstr0.gbbqp";
@@ -83,31 +81,6 @@ app.get(
     // }
   }
 )
-
-app.post('/create-checkout-session', async (req, res) => {
-  const itemsList = []
-  const itemsParams = req.body.priceIdAQuantity.split('|');
-  itemsParams.forEach((item) =>{
-    const [priceId, quantity] = item.split("::");
-    itemsList.push({
-      price: priceId,
-      quantity: quantity
-    })
-  })
-  console.log('itemsListitemsListitemsListitemsList',itemsList);
-  // Provide the exact Price ID (for example, pr_1234) of the product you want to sell
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: [
-      'card'
-    ],
-    line_items: itemsList,
-    mode: 'payment',
-    success_url: `${frontEndDomain}?success=true`,
-    cancel_url: `${frontEndDomain}?canceled=true`,
-  });
-
-  res.redirect(303, session.url);
-});
 
 //const endpointSecret = "whsec_8f6e156de7f2318095d13e20e34245ff68f636ca1ca1fc7d14dafd1a1c36aa45";
 // Match the raw body to content type application/json
