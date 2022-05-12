@@ -22,12 +22,15 @@ app.post('/sample', async (req, res) => {
 
 const frontEndDomain = 'http://localhost:3000';
 
+const mongodbLocalHost = 'mongodb://localhost:27017/Caffeine_Confessions';
+// const mongoDbCloud = `mongodb+srv://${username}:${password}@${cluster}.mongodb.net/${dbname}?retryWrites=true&w=majority`;
+
 const username = 'akila_l';
 const password = 'ZUUQsnjqABxzkWFv';
 const cluster = 'caffconfclstr0.gbbqp';
 const dbname = 'myFirstDatabase';
 mongoose.connect(
-  `mongodb+srv://${username}:${password}@${cluster}.mongodb.net/${dbname}?retryWrites=true&w=majority`
+  mongodbLocalHost
   // {
   //   useNewUrlParser: true,
   //   useUnifiedTopology: true,
