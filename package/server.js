@@ -13,7 +13,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const frontEndDomain = 'http://localhost:3000';
+const frontEndDomain = 'http://172.17.0.3:3000';
 
 const username = 'akila_l';
 const password = 'ZUUQsnjqABxzkWFv';

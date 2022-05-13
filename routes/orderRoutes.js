@@ -10,7 +10,7 @@ import Stripe from 'stripe';
 dotenv.config();
 const orderRouter = express.Router();
 const stripe = new Stripe(process.env.STRIPE_PUBLIC_KEY);
-const frontEndDomain = 'http://localhost:3000';
+const frontEndDomain = 'http://172.17.0.3:3000';
 
 //To get the orders stored in db
 orderRouter.get(
