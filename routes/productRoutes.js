@@ -10,6 +10,7 @@ const stripe = new Stripe(process.env.STRIPE_PUBLIC_KEY);
 
 const productRouter = express.Router();
 
+// To get all the products in menu and order now page
 productRouter.get(
   '/',
   expressAsyncHandler(async (req, res) => {
@@ -18,83 +19,73 @@ productRouter.get(
   })
 );
 
-productRouter.get(
-  '/slug/:slug',
+// To add a new product to the menu by admin
+productRouter.post(
+  '/',
+  isAuth,
+  isAdmin,
   expressAsyncHandler(async (req, res) => {
-    console.log('came here 1');
-    const product = await Product.findOne({ slug: req.params.slug });
-    console.log(product);
-    console.log('came here 2');
+    // To add the product details like name and price to the stripe
+    const productStripe = await stripe.products.create({
+      name: req.body.name,
+    });
+    const price = req.body.price;
+    const priceStripe = await stripe.prices.create({
+      unit_amount: price,
+      currency: 'inr',
+      recurring: { interval: 'month' },
+      product: productStripe.id,
+    });
+    // To add the created products in db
+    const newProduct = new Product({
+      productIdStripe: productStripe.id,
+      name: req.body.name,
+      slug: req.body.slug,
+      image: req.body.image,
+      price: price,
+      priceIdStripe: priceStripe.id,
+      category: req.body.category,
+      brand: req.body.brand,
+      countInStock: req.body.countInStock,
+      description: req.body.description,
+      isActive: req.body.isActive,
+    });
+    const product = await newProduct.save();
+    res.send({
+      message: 'Product Created',
+      product,
+    });
+  })
+);
+
+// Admins can edit the product based on id
+productRouter.put(
+  '/:id',
+  isAuth,
+  isAdmin,
+  expressAsyncHandler(async (req, res) => {
+    const productId = req.params.id;
+    const product = await Product.findById(productId);
     if (product) {
-      res.send(product);
+      product.name = req.body.name;
+      product.slug = req.body.slug;
+      product.price = req.body.price;
+      product.image = req.body.image;
+      product.images = req.body.images;
+      product.category = req.body.category;
+      product.brand = req.body.brand;
+      product.countInStock = req.body.countInStock;
+      product.description = req.body.description;
+      product.isActive = req.body.isActive;
+      await product.save();
+      res.send({ message: 'Product Updated' });
     } else {
       res.status(404).send({ message: 'Product Not Found' });
     }
   })
 );
 
-productRouter.post(
-    '/',
-    isAuth,
-    isAdmin,
-    expressAsyncHandler( async(req, res)=>{
-      const productStripe = await stripe.products.create({
-        name: req.body.name,
-      });
-      const price = req.body.price;
-      const priceStripe = await stripe.prices.create({
-        unit_amount: price,
-        currency: 'inr',
-        recurring: {interval: 'month'},
-        product: productStripe.id,
-      });
-        const newProduct = new Product({
-            productIdStripe: productStripe.id,
-            name: req.body.name,
-            slug: req.body.slug,
-            image: req.body.image,
-            price: price,
-            priceIdStripe: priceStripe.id,
-            category: req.body.category,
-            brand: req.body.brand,
-            countInStock: req.body.countInStock,
-            description: req.body.description,
-            isActive: req.body.isActive
-        });
-        const product = await newProduct.save();
-        res.send({
-            message: "Product Created",
-            product
-        })
-    })
-);
-
-productRouter.put(
-    '/:id',
-    isAuth,
-    isAdmin,
-    expressAsyncHandler(async (req, res) => {
-      const productId = req.params.id;
-      const product = await Product.findById(productId);
-      if (product) {
-        product.name = req.body.name;
-        product.slug = req.body.slug;
-        product.price = req.body.price;
-        product.image = req.body.image;
-        product.images = req.body.images;
-        product.category = req.body.category;
-        product.brand = req.body.brand;
-        product.countInStock = req.body.countInStock;
-        product.description = req.body.description;
-        product.isActive = req.body.isActive;
-        await product.save();
-        res.send({ message: 'Product Updated' });
-      } else {
-        res.status(404).send({ message: 'Product Not Found' });
-      }
-    })
-  );
-
+// Admins can delete the product based on id
 productRouter.delete(
   '/:id',
   isAuth,
@@ -110,6 +101,7 @@ productRouter.delete(
   })
 );
 
+// Admins can retrieve all the products
 const PAGE_SIZE = 10;
 productRouter.get(
   '/admin',
@@ -133,96 +125,10 @@ productRouter.get(
   })
 );
 
-productRouter.get(
-  '/categories',
-  expressAsyncHandler(async (req, res) => {
-    const categories = await Product.find().distinct('category');
-    res.send(categories);
-  })
-);
-
-productRouter.get(
-  '/search',
-  expressAsyncHandler(async (req, res) => {
-    const { query } = req;
-    const pageSize = query.pageSize || PAGE_SIZE;
-    const page = query.page || 1;
-    const category = query.category || '';
-    const price = query.price || '';
-    const rating = query.rating || '';
-    const order = query.order || '';
-    const searchQuery = query.query || '';
-
-    const queryFilter =
-      searchQuery && searchQuery !== 'all'
-        ? {
-            name: {
-              $regex: searchQuery,
-              $options: 'i',
-            },
-          }
-        : {};
-    const categoryFilter = category && category !== 'all' ? { category } : {};
-    const ratingFilter =
-      rating && rating !== 'all'
-        ? {
-            rating: {
-              $gte: Number(rating),
-            },
-          }
-        : {};
-    const priceFilter =
-      price && price !== 'all'
-        ? {
-            // 1-50
-            price: {
-              $gte: Number(price.split('-')[0]),
-              $lte: Number(price.split('-')[1]),
-            },
-          }
-        : {};
-    const sortOrder =
-      order === 'featured'
-        ? { featured: -1 }
-        : order === 'lowest'
-        ? { price: 1 }
-        : order === 'highest'
-        ? { price: -1 }
-        : order === 'toprated'
-        ? { rating: -1 }
-        : order === 'newest'
-        ? { createdAt: -1 }
-        : { _id: -1 };
-
-    const products = await Product.find({
-      ...queryFilter,
-      ...categoryFilter,
-      ...priceFilter,
-      ...ratingFilter,
-    })
-      .sort(sortOrder)
-      .skip(pageSize * (page - 1))
-      .limit(pageSize);
-
-    const countProducts = await Product.countDocuments({
-      ...queryFilter,
-      ...categoryFilter,
-      ...priceFilter,
-      ...ratingFilter,
-    });
-    res.send({
-      products,
-      countProducts,
-      page,
-      pages: Math.ceil(countProducts / pageSize),
-    });
-  })
-);
-
+// to retrieve the product based on id when user adds the item to the cart
 productRouter.get(
   '/:id',
   expressAsyncHandler(async (req, res) => {
-    console.log('search made', req.params.id);
     const product = await Product.findById(req.params.id);
     if (product) {
       res.send(product);

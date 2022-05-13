@@ -12,6 +12,7 @@ const orderRouter = express.Router();
 const stripe = new Stripe(process.env.STRIPE_PUBLIC_KEY);
 const frontEndDomain = 'http://localhost:3000';
 
+//To get the orders stored in db
 orderRouter.get(
   '/',
   isAuth,
@@ -22,55 +23,56 @@ orderRouter.get(
   })
 );
 
-orderRouter.post('/updateOrder',
+// To update the order placed in db after payment is done
+orderRouter.post(
+  '/updateOrder',
   isAuth,
   expressAsyncHandler(async (req, res) => {
     const orderStatus = JSON.parse(req.body.clientOrderId);
     const clientOrderId = orderStatus.clientOrderId;
     const order = await Order.find({ clientOrderId: clientOrderId });
-    console.log('orderorderorderorder',order);
-    res.send({message : "order updated"});
+    console.log('orderorderorderorder', order);
+    res.send({ message: 'order updated' });
   })
-)
+);
 
+// To store the order details in db
 orderRouter.post(
-  '/create-checkout-session', 
+  '/create-checkout-session',
   isAuth,
   expressAsyncHandler(async (req, res) => {
-    const itemsList = []
-    console.log(req.body.priceIdAQuantity);
-    console.log(JSON.parse(req.body.priceIdAQuantity));
-    const sessionData = JSON.parse(req.body.priceIdAQuantity)
+    const itemsList = [];
+    const sessionData = JSON.parse(req.body.priceIdAQuantity);
     const userId = sessionData.userId;
     const clientOrderId = sessionData.clientOrderId;
     const cartList = sessionData.cartItems;
-    const orderdItems = []
+    const orderdItems = [];
     let itemsPrice = 0;
     let taxPrice = 0;
-    cartList.forEach((item) =>{
+    cartList.forEach((item) => {
       orderdItems.push({
         slug: item.slug,
         name: item.name,
         quantity: item.quantity,
         image: item.image,
         price: item.price,
-        product: item._id
-      })
+        product: item._id,
+      });
       itemsPrice += item.price;
       taxPrice += item.price * 0.05;
       itemsList.push({
         price: item.priceIdStripe,
-        quantity: item.quantity
-      })
-    })
+        quantity: item.quantity,
+      });
+    });
     const order = new Order({
       clientOrderId: clientOrderId,
       orderItems: orderdItems,
       paymentMethod: 'card',
       paymentResult: {
-        status: "",
+        status: '',
         statusChanges: false,
-        update_time: "",
+        update_time: '',
       },
       itemsPrice: itemsPrice,
       taxPrice: taxPrice,
@@ -78,44 +80,25 @@ orderRouter.post(
       user: userId,
       isPaid: false,
       paidAt: new Date().toISOString(),
-    })
+    });
     const newOrder = await order.save();
-    console.log('itemsListitemsListitemsListitemsList',itemsList);
-    // Provide the exact Price ID (for example, pr_1234) of the product you want to sell
+
+    // Stripe method to complete the payment gateway
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: [
-        'card'
-      ],
+      payment_method_types: ['card'],
       line_items: itemsList,
       mode: 'payment',
       success_url: `${frontEndDomain}?success=true`,
       cancel_url: `${frontEndDomain}?canceled=true`,
     });
 
+    // Server sends the redirect url to the client inorder to display checkout page
     res.redirect(303, session.url);
   })
 );
 
-orderRouter.post(
-  '/',
-  isAuth,
-  expressAsyncHandler(async (req, res) => {
-    const newOrder = new Order({
-      orderItems: req.body.orderItems.map((x) => ({ ...x, product: x._id })),
-      shippingAddress: '101 c, Sri Balaji PG for gents',
-      paymentMethod: 'paytem',
-      itemsPrice: 2000,
-      shippingPrice: 0,
-      taxPrice: 30,
-      totalPrice: 2030,
-      user: req.user._id,
-    });
-
-    const order = await newOrder.save();
-    res.status(201).send({ message: 'New Order Created', order });
-  })
-);
-
+// To get appropriate order, product and user details from db and sends to the client
+// This feature is only for Admin
 orderRouter.get(
   '/summary',
   isAuth,
@@ -160,100 +143,13 @@ orderRouter.get(
   })
 );
 
+// To get the orders placed by a particular user - order history
 orderRouter.get(
   '/mine',
   isAuth,
   expressAsyncHandler(async (req, res) => {
     const orders = await Order.find({ user: req.user._id });
     res.send(orders);
-  })
-);
-
-orderRouter.get(
-  '/:id',
-  isAuth,
-  expressAsyncHandler(async (req, res) => {
-    const order = await Order.findById(req.params.id);
-    if (order) {
-      res.send(order);
-    } else {
-      res.status(404).send({ message: 'Order Not Found' });
-    }
-  })
-);
-
-orderRouter.put(
-  '/:id/deliver',
-  isAuth,
-  expressAsyncHandler(async (req, res) => {
-    const order = await Order.findById(req.params.id);
-    if (order) {
-      order.isDelivered = true;
-      order.deliveredAt = Date.now();
-      await order.save();
-      res.send({ message: 'Order Delivered' });
-    } else {
-      res.status(404).send({ message: 'Order Not Found' });
-    }
-  })
-);
-
-orderRouter.put(
-  '/:id/pay',
-  isAuth,
-  expressAsyncHandler(async (req, res) => {
-    const order = await Order.findById(req.params.id).populate(
-      'user',
-      'email name'
-    );
-    if (order) {
-      order.isPaid = true;
-      order.paidAt = Date.now();
-      order.paymentResult = {
-        id: req.body.id,
-        status: req.body.status,
-        update_time: req.body.update_time,
-        email_address: req.body.email_address,
-      };
-
-      const updatedOrder = await order.save();
-      // mailgun()
-      //   .messages()
-      //   .send(
-      //     {
-      //       from: 'Amazona <amazona@mg.yourdomain.com>',
-      //       to: `${order.user.name} <${order.user.email}>`,
-      //       subject: `New order ${order._id}`,
-      //       html: payOrderEmailTemplate(order),
-      //     },
-      //     (error, body) => {
-      //       if (error) {
-      //         console.log(error);
-      //       } else {
-      //         console.log(body);
-      //       }
-      //     }
-      //   );
-
-      res.send({ message: 'Order Paid', order: updatedOrder });
-    } else {
-      res.status(404).send({ message: 'Order Not Found' });
-    }
-  })
-);
-
-orderRouter.delete(
-  '/:id',
-  isAuth,
-  isAdmin,
-  expressAsyncHandler(async (req, res) => {
-    const order = await Order.findById(req.params.id);
-    if (order) {
-      await order.remove();
-      res.send({ message: 'Order Deleted' });
-    } else {
-      res.status(404).send({ message: 'Order Not Found' });
-    }
   })
 );
 
