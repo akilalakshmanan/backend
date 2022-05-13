@@ -31,9 +31,10 @@ productRouter.post(
     });
     const price = req.body.price;
     const priceStripe = await stripe.prices.create({
-      unit_amount: price,
+      unit_amount: price * 100,
       currency: 'inr',
-      recurring: { interval: 'month' },
+      type: 'one_time',
+      billing_scheme: 'per_unit',
       product: productStripe.id,
     });
     // To add the created products in db
