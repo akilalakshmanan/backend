@@ -59,7 +59,7 @@ orderRouter.post(
         product: item._id,
       });
       itemsPrice += item.price;
-      taxPrice += item.price * 0.05;
+      taxPrice += 0;
       itemsList.push({
         price: item.priceIdStripe,
         quantity: item.quantity,
