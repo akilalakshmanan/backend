@@ -98,7 +98,7 @@ orderRouter.post(
 );
 
 // To get appropriate order, product and user details from db and sends to the client
-// This feature is only for Admin
+// This feature is only for Admin Dashboard
 orderRouter.get(
   '/summary',
   isAuth,
